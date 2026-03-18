@@ -1,23 +1,37 @@
 import { exec } from "child_process"
-import { compressLogs } from "./compressLogs"
+import { detectCommand } from "./detectCommand"
+import { parsers } from "./parsers"
 
 export function runCommand(command: string) {
+  const commandType = detectCommand(command)
 
   exec(command, (error, stdout, stderr) => {
-
-    if (error) {
-      return console.error("Erro ao executar comando")
-    }
-    console.log(`stdout = ${stdout}`)
-    console.log(`stderr = ${stderr}`)
-    
     const fullOutput = stdout + stderr
 
-    const optimized = compressLogs(fullOutput)
+    if (error && !fullOutput) {
+      console.log(error)
+      return console.error("❌ Erro fatal no sistema: ", error.message)
+    }
+
+
+    if (!commandType || !parsers[commandType]) {
+      console.log("Comando não reconhecido, exibindo saída completa:")
+      console.log(fullOutput)
+      return
+    }
+
+    const parser = parsers[commandType]
+
+    if (!parser) {
+      console.log("Sem parser para esse comando:")
+      console.log(fullOutput)
+      return
+    }
+
+    const optimized = parser(fullOutput)
+
 
     console.log("\nLogs otimizados:")
     console.log(optimized)
-
   })
-
 }
