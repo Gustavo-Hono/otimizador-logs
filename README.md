@@ -1,0 +1,155 @@
+# AI Terminal Optimizer
+
+CLI em Node.js + TypeScript para executar comandos do terminal e exibir uma versao resumida dos logs quando houver um parser compativel.
+
+Hoje o projeto reconhece principalmente:
+
+- `git ...`
+- `jest`
+- `npm test`
+- `yarn test`
+- `pnpm test`
+
+Quando o comando nao e reconhecido, a ferramenta mostra a saida completa normal.
+
+## Requisitos
+
+- Node.js instalado
+- npm instalado
+
+## 1. Instalar dependencias
+
+Entre na pasta do projeto:
+
+```bash
+cd /home/pinguimsurfante/ai-terminal/otimizador-logs
+```
+
+Instale as dependencias:
+
+```bash
+npm install
+```
+
+## 2. Gerar a versao compilada
+
+Compile o projeto para a pasta `dist`:
+
+```bash
+npm run build
+```
+
+## 3. Liberar o comando global `ai-term`
+
+Para usar o comando direto no terminal, rode:
+
+```bash
+npm link
+```
+
+Isso registra o binario definido no projeto e libera o uso do comando `ai-term` globalmente no seu ambiente.
+
+## 4. Testar se funcionou
+
+Depois do `npm link`, teste:
+
+```bash
+ai-term git status
+```
+
+Se estiver tudo certo, a CLI vai executar `git status` e tentar mostrar uma versao otimizada da saida.
+
+## Como usar
+
+A sintaxe geral e:
+
+```bash
+ai-term <comando>
+```
+
+Exemplos:
+
+```bash
+ai-term git status
+ai-term npm test
+ai-term npx jest
+```
+
+## Como rodar sem instalar globalmente
+
+Se voce nao quiser usar `npm link`, pode executar direto pelo Node:
+
+```bash
+node dist/cli.js "git status"
+node dist/cli.js "npm test"
+```
+
+Ou em modo TypeScript, sem depender da pasta `dist`:
+
+```bash
+npx ts-node src/cli.ts "git status"
+npx ts-node src/cli.ts "npm test"
+```
+
+## Fluxo recomendado para desenvolvimento
+
+Sempre que alterar o codigo:
+
+1. Rode o build novamente:
+
+```bash
+npm run build
+```
+
+2. Teste a CLI:
+
+```bash
+ai-term git status
+```
+
+Se o comando global nao refletir suas alteracoes, rode o build de novo antes de testar.
+
+## Atualizar a instalacao global
+
+Se voce fizer mudancas no projeto, o fluxo normal e:
+
+```bash
+cd /home/pinguimsurfante/ai-terminal/otimizador-logs
+npm run build
+```
+
+Como o comando global aponta para os arquivos desse projeto, normalmente basta recompilar.
+
+Se precisar reinstalar o link:
+
+```bash
+npm link
+```
+
+## Remover o comando global
+
+Para remover o `ai-term` do sistema:
+
+```bash
+npm unlink -g ai-terminal-optimizer
+```
+
+Se quiser desfazer o link a partir da pasta do projeto:
+
+```bash
+cd /home/pinguimsurfante/ai-terminal/otimizador-logs
+npm unlink
+```
+
+## Estrutura principal
+
+- `src/cli.ts`: entrada da CLI
+- `src/runCommand.ts`: executa o comando recebido
+- `src/detectCommand.ts`: detecta qual parser usar
+- `src/parsers/`: parsers de saida
+
+## Observacoes
+
+- O nome do comando liberado no terminal e `ai-term`.
+- Se voce tentar usar `at-term`, nao vai funcionar, a menos que crie um alias manualmente.
+- O projeto depende de `npm run build` para gerar `dist/cli.js`, que e o arquivo usado pelo binario global.
