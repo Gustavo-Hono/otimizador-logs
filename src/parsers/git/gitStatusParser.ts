@@ -1,7 +1,7 @@
 export function parseGitStatus(log: string) {
 
   if (log.includes("nothing to commit, working tree clean")) {
-    return "Nada para commitar, árvore limpa"
+    return "Nada para commitar"
   }
 
   const modified = [...log.matchAll(/modified:\s+(.*)/g)].map(m => m[1])
