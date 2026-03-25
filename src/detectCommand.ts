@@ -10,6 +10,7 @@ export function detectCommand(command: string) {
   // if (command.includes("npm install")) return "npm"
 
   if (command.includes("git status")) return "git:status"
+  if (command.includes("git push")) return "git:push"
 
   // return "generic"
 
