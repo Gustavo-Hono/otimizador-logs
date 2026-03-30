@@ -10,6 +10,10 @@ export function detectCommand(command: string) {
 
   if (normalized.includes("git status")) return "git:status"
   if (normalized.includes("git push")) return "git:push"
+  if (normalized.includes("git pull --rebase")) return "git:rebase"
+  if (normalized.includes("git rebase --continue")) return "git:rebase"
+  if (normalized.includes("git rebase --abort")) return "git:rebase"
+  if (normalized.includes("git rebase --skip")) return "git:rebase"
 
   if (
     /\bnpm\s+(?:i|install)\b/.test(normalized) ||

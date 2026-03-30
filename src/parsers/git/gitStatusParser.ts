@@ -1,22 +1,37 @@
 import { bold, cyan, green, red, yellow } from "kleur/colors"
 
 function extractUntracked(log: string) {
-  const sectionMatch =
-    log.match(/Untracked files:[\s\S]*?(?=\n\n|\Z)/i) ||
-    log.match(/Arquivos não monitorados:[\s\S]*?(?=\n\n|\Z)/i)
+  const lines = log.split("\n")
+  const untracked: string[] = []
+  let inUntrackedSection = false
 
-  if (!sectionMatch) return []
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
 
-  return sectionMatch[0]
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => {
-      if (!line) return false
-      if (line.endsWith(":")) return false
-      if (line.startsWith("(")) return false
-      if (line.includes("git add")) return false
-      return true
-    })
+    if (/^(Untracked files:|Arquivos não monitorados:)$/i.test(line)) {
+      inUntrackedSection = true
+      continue
+    }
+
+    if (!inUntrackedSection) continue
+
+    if (
+      /^(Changes not staged for commit:|Changes to be committed:|Unmerged paths:|On branch .+|No ramo .+|Your branch .+|Sua branch .+|nothing to commit|nada a submeter|nothing added to commit|nada adicionado ao envio)/i.test(
+        line
+      )
+    ) {
+      inUntrackedSection = false
+      continue
+    }
+
+    if (!line) continue
+    if (line.startsWith("(")) continue
+    if (line.includes("git add")) continue
+
+    untracked.push(line)
+  }
+
+  return untracked
 }
 
 export function parseGitStatus(log: string) {
