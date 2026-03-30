@@ -28,7 +28,7 @@ export function runCommand(command: string) {
       return
     }
 
-    const optimized = parser(fullOutput)
+    const optimized = parser(fullOutput, command)
 
 
     console.log("\nLogs otimizados:")
