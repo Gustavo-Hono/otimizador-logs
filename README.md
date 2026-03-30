@@ -168,3 +168,53 @@ O projeto agora inclui dois workflows:
 Para o workflow de release funcionar, configure no repositório:
 
 - Secret: `NPM_TOKEN` (token de automacao do npm com permissao de publish)
+
+## Como usar em qualquer outro projeto
+
+Se voce quiser usar o otimizador em outro repositorio (por exemplo `meu-app`), siga este fluxo.
+
+### Opcao A: instalacao global (recomendada para uso diario)
+
+1. Instale o pacote globalmente:
+
+```bash
+npm i -g ai-terminal-optimizer
+```
+
+2. Entre no projeto onde voce quer usar:
+
+```bash
+cd /caminho/do/seu-outro-projeto
+```
+
+3. Rode comandos com o prefixo `ai-term`:
+
+```bash
+ai-term git status
+ai-term git push origin minha-branch
+ai-term npm test
+ai-term npm i axios
+```
+
+### Opcao B: usar sem instalacao global
+
+Se nao quiser instalar globalmente, rode com `npx`:
+
+```bash
+npx ai-terminal-optimizer git status
+npx ai-terminal-optimizer npm test
+```
+
+### Se o comando `ai-term` nao existir
+
+Verifique se o pacote foi publicado no npm. Se ainda nao foi, use localmente via clone:
+
+```bash
+git clone <url-do-repo> otimizador-logs
+cd otimizador-logs
+npm install
+npm run build
+npm link
+```
+
+Depois disso, o `ai-term` fica disponivel no terminal e pode ser usado em qualquer pasta/projeto.
