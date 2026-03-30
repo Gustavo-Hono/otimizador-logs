@@ -1,3 +1,5 @@
+import { blue, bold, cyan, green, yellow } from "kleur/colors"
+
 export function parseGitPush(log: string, command = "") {
   const prUrl = log.match(/https:\/\/github\.com\/\S+\/pull\/new\/\S+/)?.[0]
   const pushedBranchMatch =
@@ -15,12 +17,12 @@ export function parseGitPush(log: string, command = "") {
   const remoteBranch = pushedBranchMatch?.[2] || commandBranchMatch?.[1] || "Não identificado"
   const remote = remoteMatch?.[1] || "Não identificado"
 
-  return `
-Git push concluído:
-
-Branch local: ${localBranch}
-Branch remota: ${remoteBranch}
-Remote: ${remote}
-${prUrl ? `Pull request: ${prUrl}` : "Pull request: não sugerido"}
-`.trim()
+  return [
+    bold(green("Git push concluído")),
+    "",
+    `${cyan("Branch local:")} ${localBranch}`,
+    `${cyan("Branch remota:")} ${remoteBranch}`,
+    `${cyan("Remote:")} ${remote}`,
+    prUrl ? `${cyan("Pull request:")} ${blue(prUrl)}` : `${yellow("Pull request: não sugerido")}`
+  ].join("\n")
 }

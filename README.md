@@ -153,3 +153,18 @@ npm unlink
 - O nome do comando liberado no terminal e `ai-term`.
 - Se voce tentar usar `at-term`, nao vai funcionar, a menos que crie um alias manualmente.
 - O projeto depende de `npm run build` para gerar `dist/cli.js`, que e o arquivo usado pelo binario global.
+
+## CI/CD (GitHub Actions)
+
+O projeto agora inclui dois workflows:
+
+- `CI` (`.github/workflows/ci.yml`)
+  - Roda em `push` e `pull_request` para `main`/`master`
+  - Executa `npm ci` e `npm run build`
+- `Release` (`.github/workflows/release.yml`)
+  - Roda quando uma release e publicada no GitHub
+  - Executa `npm ci`, `npm run build` e `npm publish`
+
+Para o workflow de release funcionar, configure no repositório:
+
+- Secret: `NPM_TOKEN` (token de automacao do npm com permissao de publish)

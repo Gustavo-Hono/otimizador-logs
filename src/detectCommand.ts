@@ -1,16 +1,21 @@
 export function detectCommand(command: string) {
+  const normalized = command.trim().toLowerCase()
 
   if (
-    command.includes("jest") ||
-    command.includes("npm test") ||
-    command.includes("yarn test") ||
-    command.includes("pnpm test")
+    normalized.includes("jest") ||
+    normalized.includes("npm test") ||
+    normalized.includes("yarn test") ||
+    normalized.includes("pnpm test")
   ) return "jest"
 
-  // if (command.includes("npm install")) return "npm"
+  if (normalized.includes("git status")) return "git:status"
+  if (normalized.includes("git push")) return "git:push"
 
-  if (command.includes("git status")) return "git:status"
-  if (command.includes("git push")) return "git:push"
+  if (
+    /\bnpm\s+(?:i|install)\b/.test(normalized) ||
+    /\bpnpm\s+add\b/.test(normalized) ||
+    /\byarn\s+add\b/.test(normalized)
+  ) return "npm:install"
 
   // return "generic"
 
