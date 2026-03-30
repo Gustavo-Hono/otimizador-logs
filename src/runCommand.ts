@@ -14,13 +14,26 @@ export function runCommand(command: string) {
     }
 
 
-    if (!commandType || !parsers[commandType]) {
+    let parserKey: keyof typeof parsers | undefined
+
+    if (commandType && commandType in parsers) {
+      parserKey = commandType as keyof typeof parsers
+    }
+
+    if (
+      commandType === "git:push" &&
+      /(non-fast-forward|\[rejected\]|fetch first|tip of your current branch is behind|failed to push some refs)/i.test(fullOutput)
+    ) {
+      parserKey = "git:push:conflict"
+    }
+
+    if (!parserKey) {
       console.log("Comando não reconhecido, exibindo saída completa:")
       console.log(fullOutput)
       return
     }
 
-    const parser = parsers[commandType]
+    const parser = parsers[parserKey]
 
     if (!parser) {
       console.log("Sem parser para esse comando:")
