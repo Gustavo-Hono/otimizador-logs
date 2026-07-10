@@ -75,20 +75,26 @@ ai-term npm test
 ai-term npx jest
 ```
 
+Os argumentos são preservados exatamente como recebidos. Para usar operadores de shell, passe-os explicitamente ao shell:
+
+```bash
+ai-term sh -c 'printf "erro\n" | grep erro'
+```
+
 ## Como rodar sem instalar globalmente
 
 Se voce nao quiser usar `npm link`, pode executar direto pelo Node:
 
 ```bash
-node dist/cli.js "git status"
-node dist/cli.js "npm test"
+node dist/cli.js git status
+node dist/cli.js npm test
 ```
 
 Ou em modo TypeScript, sem depender da pasta `dist`:
 
 ```bash
-npx ts-node src/cli.ts "git status"
-npx ts-node src/cli.ts "npm test"
+npx ts-node src/cli.ts git status
+npx ts-node src/cli.ts npm test
 ```
 
 ## Fluxo recomendado para desenvolvimento

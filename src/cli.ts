@@ -2,6 +2,16 @@
 
 import { runCommand } from "./runCommand"
 
-const command = process.argv.slice(2).join(" ")
+export function main(argv = process.argv.slice(2)) {
+  const [command, ...args] = argv
 
-runCommand(command)
+  if (!command) {
+    console.error("Uso: ai-term <comando> [argumentos...]")
+    process.exitCode = 1
+    return
+  }
+
+  void runCommand(command, args)
+}
+
+if (require.main === module) main()

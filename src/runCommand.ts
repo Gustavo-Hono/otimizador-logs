@@ -1,50 +1,56 @@
-import { exec } from "child_process"
+import { execFile } from "child_process"
 import { detectCommand } from "./detectCommand"
 import { parsers } from "./parsers"
 
-export function runCommand(command: string) {
-  const commandType = detectCommand(command)
+export function runCommand(command: string, args: string[] = []): Promise<void> {
+  const commandArgs = [command, ...args]
+  const commandType = detectCommand(commandArgs)
 
-  exec(command, (error, stdout, stderr) => {
-    const fullOutput = stdout + stderr
+  return new Promise(resolve => {
+    execFile(command, args, (error, stdout, stderr) => {
+      const fullOutput = stdout + stderr
 
-    if (error && !fullOutput) {
-      console.log(error)
-      return console.error("❌ Erro fatal no sistema: ", error.message)
-    }
+      if (error) {
+        process.exitCode = typeof error.code === "number" ? error.code : 1
+      }
 
+      if (error && !fullOutput) {
+        console.log(error)
+        console.error("❌ Erro fatal no sistema: ", error.message)
+        resolve()
+        return
+      }
 
-    let parserKey: keyof typeof parsers | undefined
+      let parserKey: string | undefined = commandType
 
-    if (commandType && commandType in parsers) {
-      parserKey = commandType as keyof typeof parsers
-    }
+      if (
+        commandType === "git:push" &&
+        /(non-fast-forward|\[rejected\]|fetch first|tip of your current branch is behind|failed to push some refs)/i.test(fullOutput)
+      ) {
+        parserKey = "git:push:conflict"
+      }
 
-    if (
-      commandType === "git:push" &&
-      /(non-fast-forward|\[rejected\]|fetch first|tip of your current branch is behind|failed to push some refs)/i.test(fullOutput)
-    ) {
-      parserKey = "git:push:conflict"
-    }
+      if (!parserKey || !parsers[parserKey]) {
+        console.log("Comando não reconhecido, exibindo saída completa:")
+        console.log(fullOutput)
+        resolve()
+        return
+      }
 
-    if (!parserKey) {
-      console.log("Comando não reconhecido, exibindo saída completa:")
-      console.log(fullOutput)
-      return
-    }
+      const parser = parsers[parserKey]
 
-    const parser = parsers[parserKey]
+      if (!parser) {
+        console.log("Sem parser para esse comando:")
+        console.log(fullOutput)
+        resolve()
+        return
+      }
 
-    if (!parser) {
-      console.log("Sem parser para esse comando:")
-      console.log(fullOutput)
-      return
-    }
+      const optimized = parser(fullOutput, commandArgs.join(" "), !error)
 
-    const optimized = parser(fullOutput, command)
-
-
-    console.log("\nLogs otimizados:")
-    console.log(optimized)
+      console.log("\nLogs otimizados:")
+      console.log(optimized)
+      resolve()
+    })
   })
 }

@@ -1,41 +1,20 @@
 import { bold, cyan, green, red, yellow } from "kleur/colors"
 
-function extractUntracked(log: string) {
-  const lines = log.split("\n")
-  const untracked: string[] = []
-  let inUntrackedSection = false
+type Section = "staged" | "unstaged" | "untracked" | "conflicts"
 
-  for (const rawLine of lines) {
-    const line = rawLine.trim()
-
-    if (/^(Untracked files:|Arquivos não monitorados:)$/i.test(line)) {
-      inUntrackedSection = true
-      continue
-    }
-
-    if (!inUntrackedSection) continue
-
-    if (
-      /^(Changes not staged for commit:|Changes to be committed:|Unmerged paths:|On branch .+|No ramo .+|Your branch .+|Sua branch .+|nothing to commit|nada a submeter|nothing added to commit|nada adicionado ao envio)/i.test(
-        line
-      )
-    ) {
-      inUntrackedSection = false
-      continue
-    }
-
-    if (!line) continue
-    if (line.startsWith("(")) continue
-    if (line.includes("git add")) continue
-
-    untracked.push(line)
-  }
-
-  return untracked
+const sectionHeaders: Record<string, Section> = {
+  "Changes to be committed:": "staged",
+  "Alterações a serem submetidas:": "staged",
+  "Changes not staged for commit:": "unstaged",
+  "Alterações fora da área de preparação:": "unstaged",
+  "Alterações não preparadas para commit:": "unstaged",
+  "Untracked files:": "untracked",
+  "Arquivos não monitorados:": "untracked",
+  "Unmerged paths:": "conflicts",
+  "Caminhos não mesclados:": "conflicts"
 }
 
 export function parseGitStatus(log: string) {
-
   if (
     log.includes("nothing to commit, working tree clean") ||
     log.includes("nada a submeter, árvore de trabalho limpa") ||
@@ -44,32 +23,58 @@ export function parseGitStatus(log: string) {
     return bold(green("Nada para commitar"))
   }
 
-  const modified = [...log.matchAll(/modified:\s+(.*)/g)].map(m => m[1])
-  const newFiles = [...log.matchAll(/new file:\s+(.*)/g)].map(m => m[1])
-  const deleted = [...log.matchAll(/deleted:\s+(.*)/g)].map(m => m[1])
-  const untracked = extractUntracked(log)
+  const files: Record<Section, string[]> = {
+    staged: [],
+    unstaged: [],
+    untracked: [],
+    conflicts: []
+  }
+  let section: Section | undefined
 
-  const noCommits = log.includes("No commits yet")
+  for (const line of log.split(/\r?\n/)) {
+    const trimmed = line.trim()
 
-  const modifiedCount = modified.length > 0 ? yellow(String(modified.length)) : green("0")
-  const newCount = newFiles.length > 0 ? yellow(String(newFiles.length)) : green("0")
-  const deletedCount = deleted.length > 0 ? yellow(String(deleted.length)) : green("0")
-  const untrackedCount = untracked.length > 0 ? yellow(String(untracked.length)) : green("0")
+    if (sectionHeaders[trimmed]) {
+      section = sectionHeaders[trimmed]
+      continue
+    }
+
+    if (!section || !trimmed || trimmed.startsWith("(") || trimmed.includes("git add")) continue
+
+    if (!/^\s/.test(line)) {
+      section = undefined
+      continue
+    }
+
+    if (section === "untracked") {
+      files.untracked.push(trimmed)
+      continue
+    }
+
+    const fileMatch = trimmed.match(/^([^:]+):\s+(.+)$/)
+    if (fileMatch) files[section].push(`${fileMatch[1]}: ${fileMatch[2]}`)
+  }
+
+  const renderSection = (title: string, entries: string[], highlight = false) => {
+    const count = entries.length > 0 ? yellow(String(entries.length)) : green("0")
+    const content = entries.length > 0
+      ? entries.map(file => highlight ? red(`- ${file}`) : `- ${file}`).join("\n")
+      : green("Nenhum")
+
+    return `${cyan(title)} (${count}):\n${content}`
+  }
+  const noCommits = log.includes("No commits yet") || log.includes("Ainda sem commits")
 
   return [
     bold(cyan("Git status")),
     "",
-    `${cyan("Modified")} (${modifiedCount}):`,
-    modified.map((f) => red(`- ${f}`)).join("\n") || green("Nenhum"),
+    renderSection("Staged", files.staged),
     "",
-    `${cyan("New files")} (${newCount}):`,
-    newFiles.map((f) => `- ${f}`).join("\n") || green("Nenhum"),
+    renderSection("Unstaged", files.unstaged, true),
     "",
-    `${cyan("Deleted")} (${deletedCount}):`,
-    deleted.map((f) => red(`- ${f}`)).join("\n") || green("Nenhum"),
+    renderSection("Untracked", files.untracked),
     "",
-    `${cyan("Untracked")} (${untrackedCount}):`,
-    untracked.map((f) => `- ${f}`).join("\n") || green("Nenhum"),
+    renderSection("Conflicts", files.conflicts, true),
     noCommits ? `\n${yellow("Repositório ainda sem commits")}` : ""
   ].join("\n")
 }
