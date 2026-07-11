@@ -6,7 +6,8 @@
     "ai-term": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "npm run build && node tests/regressions.test.js"
   },
   "keywords": [],
   "author": "",

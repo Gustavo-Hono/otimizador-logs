@@ -1,27 +1,32 @@
 import { bold, cyan, green, red, yellow } from "kleur/colors"
 
 export function parseJest(log: string) {
+  const testsSummary = log.match(/Tests:\s*([^\r\n]+)/i)?.[1]
+  const readCount = (label: string) => {
+    const value = testsSummary?.match(new RegExp(`([\\d,]+)\\s+${label}`, "i"))?.[1]
+    return value ? Number(value.replace(/,/g, "")) : undefined
+  }
 
-  const passed = log.match(/PASS/g)?.length || 0
-  const failed = log.match(/FAIL/g)?.length || 0
-  const testMatch = log.match(/Tests:\s+(\d+)/)
+  const passed = testsSummary ? readCount("passed") ?? 0 : undefined
+  const failed = testsSummary ? readCount("failed") ?? 0 : undefined
+  const total = testsSummary ? readCount("total") : undefined
   const timeMatch = log.match(/Time:\s+([\d.]+)\s*m?s/i)
-
+  const hasFailures = (failed ?? 0) > 0 || (!testsSummary && /\bFAIL\b/.test(log))
   const failedTestName = log.match(/●\s+(.*)/)?.[1]?.trim() || "Nenhum"
   const errorMessage = log.match(/●.*\n\n\s+([\s\S]*?)(?=\n\s+at)/)?.[1]?.trim()
-
   const errorLocation = log.match(/at\s+(.*:\d+:\d+)/)?.[1]
-
-  const totalTests = testMatch ? testMatch[1] : "Não encontrado"
+  const passedText = passed ?? "Não encontrado"
+  const failedText = failed ?? "Não encontrado"
+  const totalText = total ?? "Não encontrado"
   const executionTime = `${timeMatch ? timeMatch[1] : "Não encontrado"} s`
 
-  if (failed > 0) {
+  if (hasFailures) {
     return [
       bold(red("Resultado de testes com falhas")),
       "",
-      `${cyan("Tests passed:")} ${green(String(passed))}`,
-      `${cyan("Tests failed:")} ${red(String(failed))}`,
-      `${cyan("Total tests:")} ${totalTests}`,
+      `${cyan("Tests passed:")} ${green(String(passedText))}`,
+      `${cyan("Tests failed:")} ${red(String(failedText))}`,
+      `${cyan("Total tests:")} ${totalText}`,
       `${cyan("Execution time:")} ${executionTime}`,
       "",
       bold(yellow("Detalhes da falha")),
@@ -34,9 +39,9 @@ export function parseJest(log: string) {
   return [
     bold(green("Todos os testes passaram com sucesso")),
     "",
-    `${cyan("Tests passed:")} ${green(String(passed))}`,
-    `${cyan("Tests failed:")} ${green(String(failed))}`,
-    `${cyan("Total tests:")} ${totalTests}`,
+    `${cyan("Tests passed:")} ${green(String(passedText))}`,
+    `${cyan("Tests failed:")} ${green(String(failedText))}`,
+    `${cyan("Total tests:")} ${totalText}`,
     `${cyan("Execution time:")} ${executionTime}`
   ].join("\n")
 }

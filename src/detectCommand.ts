@@ -1,22 +1,42 @@
-export function detectCommand(command: string) {
-  const normalized = command.trim().toLowerCase()
+export type CommandType =
+  | "jest"
+  | "git:status"
+  | "git:push"
+  | "git:rebase"
+  | "npm:install"
+
+export function detectCommand(command: string | readonly string[]): CommandType | undefined {
+  const tokens = typeof command === "string"
+    ? command.trim().split(/\s+/).filter(Boolean)
+    : [...command]
+
+  const executable = tokens[0]?.split(/[\\/]/).pop()?.toLowerCase()
+  const subcommand = tokens[1]?.toLowerCase()
+  const remainingArgs = tokens.slice(2).map(token => token.toLowerCase())
+
+  if (executable === "git" && subcommand === "status") return "git:status"
+  if (executable === "git" && subcommand === "push") return "git:push"
 
   if (
-    normalized.includes("jest") ||
-    normalized.includes("npm test") ||
-    normalized.includes("yarn test") ||
-    normalized.includes("pnpm test")
+    executable === "git" &&
+    (
+      (subcommand === "pull" && remainingArgs.includes("--rebase")) ||
+      (subcommand === "rebase" && remainingArgs.some(arg => (
+        arg === "--continue" || arg === "--abort" || arg === "--skip"
+      )))
+    )
+  ) return "git:rebase"
+
+  if (executable === "jest") return "jest"
+  if (executable === "npx" && subcommand === "jest") return "jest"
+
+  if (
+    (executable === "npm" || executable === "yarn" || executable === "pnpm") &&
+    (subcommand === "test" || (subcommand === "run" && remainingArgs[0] === "test"))
   ) return "jest"
 
-  if (normalized.includes("git status")) return "git:status"
-  if (normalized.includes("git push")) return "git:push"
-
   if (
-    /\bnpm\s+(?:i|install)\b/.test(normalized) ||
-    /\bpnpm\s+add\b/.test(normalized) ||
-    /\byarn\s+add\b/.test(normalized)
+    (executable === "npm" && (subcommand === "i" || subcommand === "install")) ||
+    ((executable === "pnpm" || executable === "yarn") && subcommand === "add")
   ) return "npm:install"
-
-  // return "generic"
-
 }

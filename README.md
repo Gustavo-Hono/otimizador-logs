@@ -44,18 +44,26 @@ ai-term npm test
 ai-term npx jest
 ```
 
-## Run without global install
+Os argumentos são preservados exatamente como recebidos. Para usar operadores de shell, passe-os explicitamente ao shell:
 
 ```bash
-npm install
-npm run build
-node dist/cli.js "git status"
+ai-term sh -c 'printf "erro\n" | grep erro'
+```
+
+## Como rodar sem instalar globalmente
+
+Se voce nao quiser usar `npm link`, pode executar direto pelo Node:
+
+```bash
+node dist/cli.js git status
+node dist/cli.js npm test
 ```
 
 For development mode:
 
 ```bash
-npx ts-node src/cli.ts "npm test"
+npx ts-node src/cli.ts git status
+npx ts-node src/cli.ts npm test
 ```
 
 ## Project structure
