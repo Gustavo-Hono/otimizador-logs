@@ -1,87 +1,98 @@
 # AI Terminal Optimizer
 
-TypeScript CLI for running terminal commands and turning noisy output into concise, actionable summaries.
+A TypeScript CLI that runs developer commands and turns recognized, noisy output
+into concise, actionable summaries. Unknown output is preserved exactly instead
+of being forced through an unreliable parser.
 
-This project is aimed at developer productivity: instead of reading long logs from Git, Jest, or package scripts, the CLI detects known command patterns and prints a cleaner summary while preserving the full output fallback for unsupported commands.
+## Features
 
-## What it demonstrates
+- Safe command execution without an implicit shell
+- Actionable summaries for Git, Jest, npm, yarn, and pnpm output
+- Original exit codes and signal-based exit status preservation
+- Raw passthrough for unknown commands and logs larger than 10 MiB
+- English and Portuguese Git output recognition
 
-- Node.js CLI design with TypeScript
-- Command execution and output parsing
-- Parser-based architecture for different tools
-- Packaging with a global executable command
-- GitHub Actions workflows for CI and release preparation
+## Requirements
 
-## Supported command families
-
-- `git ...`
-- `jest`
-- `npm test`
-- `yarn test`
-- `pnpm test`
-
-Unsupported commands still run normally and print their original output.
+- Node.js 20 or newer
 
 ## Installation
 
+Install globally from npm:
+
 ```bash
-npm install
-npm run build
-npm link
+npm install --global ai-terminal-optimizer
 ```
 
-The global command is:
+Or run it without a global installation:
 
 ```bash
-ai-term <command>
+npx ai-terminal-optimizer git status
+```
+
+For local development:
+
+```bash
+npm ci
+npm run build
+npm link
 ```
 
 ## Usage
 
 ```bash
 ai-term git status
+ai-term git status --short
+ai-term git push --set-upstream origin feature/my-change
 ai-term npm test
 ai-term npx jest
+ai-term --help
+ai-term --version
 ```
 
-Os argumentos são preservados exatamente como recebidos. Para usar operadores de shell, passe-os explicitamente ao shell:
+Arguments are passed directly to the executable. Shell operators are not
+interpreted automatically. Invoke a shell explicitly when needed:
 
 ```bash
-ai-term sh -c 'printf "erro\n" | grep erro'
+ai-term sh -c 'printf "error\n" | grep error'
 ```
 
-## Como rodar sem instalar globalmente
+## Recognized output
 
-Se voce nao quiser usar `npm link`, pode executar direto pelo Node:
+- `git status`, including short/porcelain output
+- `git push`, including rejected pushes
+- `git rebase` and `git pull --rebase`
+- Jest, whether invoked directly or through npm, yarn, or pnpm
+- npm, yarn, and pnpm install/add commands
+
+A package test script is summarized only when its output is recognized as Jest.
+Mocha, Vitest, custom scripts, unsupported formats, and unknown commands retain
+their original output.
+
+## Development
 
 ```bash
-node dist/cli.js git status
-node dist/cli.js npm test
+npm test
+npm run test:package
 ```
 
-For development mode:
-
-```bash
-npx ts-node src/cli.ts git status
-npx ts-node src/cli.ts npm test
-```
-
-## Project structure
+The package smoke test builds a tarball, installs it in a temporary directory,
+and exercises the published executable.
 
 ```text
-src/cli.ts              CLI entry point
-src/runCommand.ts       command execution
-src/detectCommand.ts    parser detection
-src/parsers/            output parsers
+src/cli.ts          CLI entry point and built-in help
+src/runCommand.ts   child-process execution and output fallback
+src/detectCommand.ts
+src/parsers/        parser registry and tool-specific parsers
+tests/              regression and package smoke tests
 ```
 
-## CI/CD
+## Release
 
-The repository includes GitHub Actions workflows for:
+GitHub Actions validates Node.js 20 and 22. Publishing is triggered by a GitHub
+release and uses npm provenance. The repository requires an `NPM_TOKEN` secret
+with permission to publish the package.
 
-- CI on push and pull request
-- Release workflow prepared for npm publishing
+## License
 
-## Status
-
-Active portfolio project. The next improvements would be adding more parsers, snapshot tests for log output, and better summary formatting for common CI failures.
+[ISC](LICENSE)

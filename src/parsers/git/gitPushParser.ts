@@ -1,4 +1,5 @@
 import { blue, bold, cyan, green, red, yellow } from "kleur/colors"
+import { LogParser, parsed, unmatched } from "../types"
 
 function normalizeGithubRepoUrl(remote: string) {
   const httpsMatch = remote.match(/^https:\/\/github\.com\/([^/]+\/[^/.]+)(?:\.git)?$/)
@@ -10,7 +11,27 @@ function normalizeGithubRepoUrl(remote: string) {
   return null
 }
 
-export function parseGitPush(log: string, command = "", succeeded = true) {
+function commandPushTarget(args: readonly string[]) {
+  const valueFlags = new Set(["--repo", "--receive-pack", "--exec"])
+  const positional: string[] = []
+
+  for (let index = 1; index < args.length; index += 1) {
+    const token = args[index]
+    if (valueFlags.has(token)) {
+      index += 1
+      continue
+    }
+    if (token.startsWith("-")) continue
+    positional.push(token)
+  }
+
+  const remote = positional[0]
+  const refspec = positional[1]
+  const branch = refspec?.split(":").pop()
+  return { remote, branch }
+}
+
+export const parseGitPush: LogParser = (log, context) => {
   const prUrlFromLog =
     log.match(/https:\/\/github\.com\/\S+\/pull\/new\/\S+/)?.[0] ||
     log.match(/https:\/\/github\.com\/\S+\/compare\/\S+/)?.[0]
@@ -21,36 +42,38 @@ export function parseGitPush(log: string, command = "", succeeded = true) {
     log.match(/(?:^|\n)\s*[0-9a-f.]+\.\.[0-9a-f.]+\s+(\S+)\s+->\s+(\S+)/) ||
     log.match(/(?:^|\n)\s*\w+\s+(\S+)\s+->\s+(\S+)/)
 
-  const commandBranchMatch =
-    command.match(/(?:git\s+push|gp)\s+\S+\s+(\S+)/) ||
-    command.match(/(?:git\s+push|gp)\s+(\S+)/)
-
   const remoteMatch = log.match(/To\s+(https?:\/\/\S+|git@\S+)/)
-  const localBranch = pushedBranchMatch?.[1] || commandBranchMatch?.[1] || "Não identificado"
-  const remoteBranch = pushedBranchMatch?.[2] || commandBranchMatch?.[1] || "Não identificado"
-  const remote = remoteMatch?.[1] || "Não identificado"
+  const target = commandPushTarget(context.args)
+  const localBranch = pushedBranchMatch?.[1] || target.branch || "Unknown"
+  const remoteBranch = pushedBranchMatch?.[2] || target.branch || "Unknown"
+  const remote = remoteMatch?.[1] || target.remote || "Unknown"
   const repoUrl = normalizeGithubRepoUrl(remote)
   const fallbackPrUrl =
-    repoUrl && remoteBranch !== "Não identificado" ? `${repoUrl}/pull/new/${remoteBranch}` : null
+    repoUrl && remoteBranch !== "Unknown" ? `${repoUrl}/pull/new/${remoteBranch}` : null
   const prUrl = prUrlFromLog || fallbackPrUrl
 
-  if (!succeeded) {
-    return [
-      bold(red(rejection ? "Git push rejeitado" : "Git push falhou")),
+  if (!context.succeeded) {
+    if (!rejection && !errorMessage) return unmatched()
+    return parsed([
+      bold(red(rejection ? "Git push rejected" : "Git push failed")),
       "",
-      `${cyan("Branch local:")} ${localBranch}`,
-      `${cyan("Branch remota:")} ${remoteBranch}`,
+      `${cyan("Local branch:")} ${localBranch}`,
+      `${cyan("Remote branch:")} ${remoteBranch}`,
       `${cyan("Remote:")} ${remote}`,
-      `${yellow("Motivo:")} ${rejection || errorMessage || "Falha não identificada"}`
-    ].join("\n")
+      `${yellow("Reason:")} ${rejection || errorMessage}`
+    ].join("\n"))
   }
 
-  return [
-    bold(green("Git push concluído")),
+  if (!pushedBranchMatch && !prUrlFromLog && !/Everything up-to-date/i.test(log)) {
+    return unmatched()
+  }
+
+  return parsed([
+    bold(green("Git push completed")),
     "",
-    `${cyan("Branch local:")} ${localBranch}`,
-    `${cyan("Branch remota:")} ${remoteBranch}`,
+    `${cyan("Local branch:")} ${localBranch}`,
+    `${cyan("Remote branch:")} ${remoteBranch}`,
     `${cyan("Remote:")} ${remote}`,
-    prUrl ? `${cyan("Pull request:")} ${blue(prUrl)}` : yellow("Pull request: não sugerido")
-  ].join("\n")
+    prUrl ? `${cyan("Pull request:")} ${blue(prUrl)}` : yellow("Pull request: not suggested")
+  ].join("\n"))
 }

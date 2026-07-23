@@ -1,4 +1,5 @@
 import { bold, cyan, green, red, yellow } from "kleur/colors"
+import { LogParser, parsed, unmatched } from "../types"
 
 function extractConflictFiles(log: string) {
   const fromConflictPt = [...log.matchAll(/CONFLITO.*? em (.+)/gi)].map((m) => m[1].trim())
@@ -8,7 +9,7 @@ function extractConflictFiles(log: string) {
   return [...new Set([...fromConflictPt, ...fromConflictEn, ...fromNeedsMerge])]
 }
 
-export function parseGitRebase(log: string) {
+export const parseGitRebase: LogParser = (log) => {
   const hasConflict =
     /CONFLITO|CONFLICT|needs merge|Resolve all conflicts manually|You must edit all merge conflicts/i.test(log)
   const files = extractConflictFiles(log)
@@ -18,32 +19,26 @@ export function parseGitRebase(log: string) {
     const commitId = commitMatch?.[1] || "não identificado"
     const commitMessage = commitMatch?.[2]?.trim() || "não identificado"
 
-    return [
-      bold(red("Rebase interrompido por conflito")),
+    return parsed([
+      bold(red("Rebase stopped by conflicts")),
       "",
-      `${cyan("Commit com problema:")} ${commitId}`,
-      `${cyan("Mensagem do commit:")} ${commitMessage}`,
+      `${cyan("Problematic commit:")} ${commitId}`,
+      `${cyan("Commit message:")} ${commitMessage}`,
       "",
-      `${yellow("Arquivos em conflito")} (${files.length}):`,
-      files.map((file) => red(`- ${file}`)).join("\n") || yellow("- não identificado"),
+      `${yellow("Conflicting files")} (${files.length}):`,
+      files.map((file) => red(`- ${file}`)).join("\n") || yellow("- unknown"),
       "",
-      cyan("Próximos passos sugeridos:"),
-      "1. Resolver conflitos nos arquivos acima",
-      "2. git add <arquivos-resolvidos>",
+      cyan("Suggested next steps:"),
+      "1. Resolve the conflicts in the files above",
+      "2. git add <resolved-files>",
       "3. git rebase --continue",
-      "4. Se desistir: git rebase --abort"
-    ].join("\n")
+      "4. To cancel: git rebase --abort"
+    ].join("\n"))
   }
 
   if (/Successfully rebased and updated|Current branch .* is up to date/i.test(log)) {
-    return bold(green("Rebase concluído sem conflitos"))
+    return parsed(bold(green("Rebase completed without conflicts")))
   }
 
-  return [
-    bold(yellow("Comando de rebase executado")),
-    "",
-    yellow("Sem padrão conhecido para resumir essa saída."),
-    "Saída original:",
-    log.trim()
-  ].join("\n")
+  return unmatched()
 }

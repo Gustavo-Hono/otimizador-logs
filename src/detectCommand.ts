@@ -1,5 +1,6 @@
 export type CommandType =
   | "jest"
+  | "test"
   | "git:status"
   | "git:push"
   | "git:rebase"
@@ -17,15 +18,10 @@ export function detectCommand(command: string | readonly string[]): CommandType 
   if (executable === "git" && subcommand === "status") return "git:status"
   if (executable === "git" && subcommand === "push") return "git:push"
 
-  if (
-    executable === "git" &&
-    (
-      (subcommand === "pull" && remainingArgs.includes("--rebase")) ||
-      (subcommand === "rebase" && remainingArgs.some(arg => (
-        arg === "--continue" || arg === "--abort" || arg === "--skip"
-      )))
-    )
-  ) return "git:rebase"
+  if (executable === "git" && subcommand === "pull" && remainingArgs.includes("--rebase")) {
+    return "git:rebase"
+  }
+  if (executable === "git" && subcommand === "rebase") return "git:rebase"
 
   if (executable === "jest") return "jest"
   if (executable === "npx" && subcommand === "jest") return "jest"
@@ -33,10 +29,12 @@ export function detectCommand(command: string | readonly string[]): CommandType 
   if (
     (executable === "npm" || executable === "yarn" || executable === "pnpm") &&
     (subcommand === "test" || (subcommand === "run" && remainingArgs[0] === "test"))
-  ) return "jest"
+  ) return "test"
 
   if (
     (executable === "npm" && (subcommand === "i" || subcommand === "install")) ||
-    ((executable === "pnpm" || executable === "yarn") && subcommand === "add")
+    ((executable === "pnpm" || executable === "yarn") && (
+      subcommand === "add" || subcommand === "install"
+    ))
   ) return "npm:install"
 }

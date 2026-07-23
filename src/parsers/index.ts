@@ -6,8 +6,7 @@ import { parseGitConflicts } from "./git/gitConflictsParser"
 import { parseGitRebase } from "./git/gitRebaseParser"
 import { parseJest } from "./jest/jestParser"
 import { npmParser } from "./npm/npmParser"
-
-type LogParser = (log: string, command?: string, succeeded?: boolean) => string
+import { LogParser } from "./types"
 
 export const parsers: Record<string, LogParser> = {
   jest: parseJest,
