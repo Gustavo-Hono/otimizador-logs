@@ -1,0 +1,10 @@
+node:internal/modules/cjs/loader:1228
+  throw err;
+  ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'missing-package' imported from /workspace/src/index.js
+    at packageResolve (node:internal/modules/esm/resolve:873:9)
+    at moduleResolve (node:internal/modules/esm/resolve:946:18)
+    at file:///workspace/src/index.js:4:1
+
+Node.js v20.19.5

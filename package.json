@@ -1,7 +1,7 @@
 {
   "name": "ai-terminal-optimizer",
-  "version": "1.0.0",
-  "description": "Run terminal commands and turn noisy developer logs into concise, actionable summaries.",
+  "version": "1.1.0",
+  "description": "Compress noisy developer logs into factual, token-efficient summaries.",
   "bin": {
     "ai-term": "./dist/cli.js"
   },
@@ -20,8 +20,11 @@
     "developer-tools",
     "git",
     "jest",
+    "llm",
+    "log-parser",
     "logs",
-    "terminal"
+    "terminal",
+    "token-efficient"
   ],
   "author": "Gustavo Hono",
   "license": "ISC",
@@ -36,9 +39,7 @@
   "engines": {
     "node": ">=20"
   },
-  "dependencies": {
-    "kleur": "^4.1.5"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.2",

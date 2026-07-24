@@ -1,0 +1,14 @@
+Cypress run
+
+  Checkout
+    1) submits an order
+
+  2 passing
+  1 failing
+
+  1) Checkout
+       submits an order:
+     AssertionError: expected 500 to equal 201
+      at Context.eval (/workspace/cypress/e2e/checkout.cy.ts:28:12)
+
+(Run Finished)

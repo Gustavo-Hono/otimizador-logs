@@ -1,0 +1,12 @@
+  User repository
+    ✔ saves a user
+    1) returns missing user
+
+  1 passing (24ms)
+  1 failing
+
+  1) User repository
+       returns missing user:
+     AssertionError: expected undefined to equal null
+      at Context.<anonymous> (/workspace/test/user.test.js:22:16)
+      at process.processImmediate (node:internal/timers:478:21)

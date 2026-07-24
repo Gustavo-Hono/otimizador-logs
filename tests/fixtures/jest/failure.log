@@ -1,0 +1,21 @@
+FAIL src/user.test.ts
+  UserService
+    ✕ creates user (12 ms)
+    ✕ rejects duplicate email (3 ms)
+
+● UserService › creates user
+
+  AssertionError: expected 201, received 500
+  Expected: 201
+  Received: 500
+      at Object.<anonymous> (/workspace/src/user.test.ts:18:7)
+      at Promise.then.completed (/workspace/node_modules/jest-circus/build/utils.js:298:28)
+
+● UserService › rejects duplicate email
+
+  Error: duplicate email was accepted
+      at Object.<anonymous> (/workspace/src/user.test.ts:31:5)
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       2 failed, 10 passed, 12 total
+Time:        1.24 s

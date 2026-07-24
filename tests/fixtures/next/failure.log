@@ -1,0 +1,7 @@
+▲ Next.js 15.2.0
+Creating an optimized production build ...
+Failed to compile.
+
+./src/page.tsx:14:9
+Type error: Type 'string' is not assignable to type 'number'.
+Next.js build worker exited with code: 1

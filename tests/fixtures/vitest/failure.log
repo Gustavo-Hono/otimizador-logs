@@ -1,0 +1,15 @@
+ RUN  v3.2.4 /workspace
+
+ ❯ src/cart.test.ts (2 tests | 1 failed) 10ms
+   × Cart > calculates total 8ms
+
+FAIL  src/cart.test.ts > Cart > calculates total
+AssertionError: expected 12 to be 10
+Expected: 10
+Received: 12
+ ❯ src/cart.test.ts:14:22
+ ❯ node_modules/@vitest/runner/dist/index.js:100:10
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 8 passed (9)
+   Duration  1.18s

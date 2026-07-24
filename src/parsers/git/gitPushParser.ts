@@ -1,79 +1,48 @@
-import { blue, bold, cyan, green, red, yellow } from "kleur/colors"
-import { LogParser, parsed, unmatched } from "../types"
-
-function normalizeGithubRepoUrl(remote: string) {
-  const httpsMatch = remote.match(/^https:\/\/github\.com\/([^/]+\/[^/.]+)(?:\.git)?$/)
-  if (httpsMatch) return `https://github.com/${httpsMatch[1]}`
-
-  const sshMatch = remote.match(/^git@github\.com:([^/]+\/[^/.]+)(?:\.git)?$/)
-  if (sshMatch) return `https://github.com/${sshMatch[1]}`
-
-  return null
-}
+import { summary } from "../helpers"
+import { diagnostic, LogParser, parsed, unmatched } from "../types"
 
 function commandPushTarget(args: readonly string[]) {
   const valueFlags = new Set(["--repo", "--receive-pack", "--exec"])
   const positional: string[] = []
-
   for (let index = 1; index < args.length; index += 1) {
     const token = args[index]
     if (valueFlags.has(token)) {
       index += 1
       continue
     }
-    if (token.startsWith("-")) continue
-    positional.push(token)
+    if (!token.startsWith("-")) positional.push(token)
   }
-
-  const remote = positional[0]
-  const refspec = positional[1]
-  const branch = refspec?.split(":").pop()
-  return { remote, branch }
+  return {
+    remote: positional[0],
+    branch: positional[1]?.split(":").pop()
+  }
 }
 
 export const parseGitPush: LogParser = (log, context) => {
-  const prUrlFromLog =
-    log.match(/https:\/\/github\.com\/\S+\/pull\/new\/\S+/)?.[0] ||
-    log.match(/https:\/\/github\.com\/\S+\/compare\/\S+/)?.[0]
-  const rejection = log.match(/^\s*!\s+\[(?:remote )?rejected\].*$/im)?.[0]?.trim()
-  const errorMessage = log.match(/(?:^|\n)((?:error|fatal):[^\n]*)/i)?.[1]?.trim()
-  const pushedBranchMatch =
+  const pushed =
     log.match(/\*\s+\[new branch\]\s+(\S+)\s+->\s+(\S+)/) ||
-    log.match(/(?:^|\n)\s*[0-9a-f.]+\.\.[0-9a-f.]+\s+(\S+)\s+->\s+(\S+)/) ||
-    log.match(/(?:^|\n)\s*\w+\s+(\S+)\s+->\s+(\S+)/)
-
-  const remoteMatch = log.match(/To\s+(https?:\/\/\S+|git@\S+)/)
+    log.match(/(?:^|\n)\s*[0-9a-f.]+\.\.[0-9a-f.]+\s+(\S+)\s+->\s+(\S+)/)
   const target = commandPushTarget(context.args)
-  const localBranch = pushedBranchMatch?.[1] || target.branch || "Unknown"
-  const remoteBranch = pushedBranchMatch?.[2] || target.branch || "Unknown"
-  const remote = remoteMatch?.[1] || target.remote || "Unknown"
-  const repoUrl = normalizeGithubRepoUrl(remote)
-  const fallbackPrUrl =
-    repoUrl && remoteBranch !== "Unknown" ? `${repoUrl}/pull/new/${remoteBranch}` : null
-  const prUrl = prUrlFromLog || fallbackPrUrl
+  const remote = log.match(/To\s+(\S+)/)?.[1] || target.remote || "unknown"
+  const branch = pushed?.[1] || target.branch || "unknown"
+  const remoteBranch = pushed?.[2] || target.branch || "unknown"
 
-  if (!context.succeeded) {
-    if (!rejection && !errorMessage) return unmatched()
-    return parsed([
-      bold(red(rejection ? "Git push rejected" : "Git push failed")),
-      "",
-      `${cyan("Local branch:")} ${localBranch}`,
-      `${cyan("Remote branch:")} ${remoteBranch}`,
-      `${cyan("Remote:")} ${remote}`,
-      `${yellow("Reason:")} ${rejection || errorMessage}`
-    ].join("\n"))
+  if (context.succeeded && (
+    pushed || /Everything up-to-date/i.test(log)
+  )) {
+    return parsed(summary("git-push", "pass", {
+      branch,
+      remoteBranch,
+      remote,
+      state: /Everything up-to-date/i.test(log) ? "up-to-date" : "pushed"
+    }))
   }
 
-  if (!pushedBranchMatch && !prUrlFromLog && !/Everything up-to-date/i.test(log)) {
-    return unmatched()
+  const error = log.match(/(?:^|\n)((?:error|fatal):[^\n]*)/i)?.[1]?.trim()
+  if (!context.succeeded && error) {
+    const result = summary("git-push", "fail", { branch, remoteBranch, remote })
+    result.diagnostics.push(diagnostic(error))
+    return parsed(result)
   }
-
-  return parsed([
-    bold(green("Git push completed")),
-    "",
-    `${cyan("Local branch:")} ${localBranch}`,
-    `${cyan("Remote branch:")} ${remoteBranch}`,
-    `${cyan("Remote:")} ${remote}`,
-    prUrl ? `${cyan("Pull request:")} ${blue(prUrl)}` : yellow("Pull request: not suggested")
-  ].join("\n"))
+  return unmatched()
 }

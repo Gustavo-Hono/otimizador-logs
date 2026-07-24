@@ -1,0 +1,10 @@
+Running 12 tests using 4 workers
+
+  1) tests/login.spec.ts:12:5 › Authentication › signs in
+
+    Error: expect(locator).toBeVisible() failed
+    at /workspace/tests/login.spec.ts:18:21
+    at /workspace/node_modules/playwright/lib/worker.js:50:10
+
+  11 passed (4.2s)
+  1 failed

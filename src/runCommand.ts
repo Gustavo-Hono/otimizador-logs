@@ -1,9 +1,33 @@
 import { spawn } from "child_process"
 import { constants } from "os"
 import { detectCommand } from "./detectCommand"
-import { parsers } from "./parsers"
+import { normalizeLog, NormalizedLog } from "./normalizeLog"
+import { parserEngine } from "./parsers"
+import { ParserEngine } from "./parsers/engine"
+import { ParserContext } from "./parsers/types"
+import { renderSummary, RenderOptions } from "./renderSummary"
 
 const MAX_CAPTURE_BYTES = 10 * 1024 * 1024
+const DEFAULT_MAX_ITEMS = 5
+const DEFAULT_MAX_CHARS = 12_000
+
+export interface RunCommandOptions {
+  raw?: boolean
+  maxItems?: number
+  maxChars?: number
+}
+
+export interface LogProcessingServices {
+  normalize(log: string): NormalizedLog
+  parserEngine: ParserEngine
+  render(summary: Parameters<typeof renderSummary>[0], options: RenderOptions): string
+}
+
+const defaultServices: LogProcessingServices = {
+  normalize: normalizeLog,
+  parserEngine,
+  render: renderSummary
+}
 
 type OutputStream = "stdout" | "stderr"
 interface OutputChunk {
@@ -16,12 +40,16 @@ function signalExitCode(signal: NodeJS.Signals | null) {
   return 128 + (constants.signals[signal] || 0)
 }
 
-export function runCommand(command: string, args: string[] = []): Promise<void> {
-  const commandArgs = [command, ...args]
-  const commandType = detectCommand(commandArgs)
+export function runCommand(
+  command: string,
+  args: string[] = [],
+  options: RunCommandOptions = {},
+  services: LogProcessingServices = defaultServices
+): Promise<void> {
+  const commandType = detectCommand([command, ...args])
 
   return new Promise(resolve => {
-    const captureOutput = Boolean(commandType)
+    const captureOutput = !options.raw && Boolean(commandType)
     const child = spawn(command, args, {
       shell: false,
       stdio: captureOutput ? ["inherit", "pipe", "pipe"] : "inherit"
@@ -80,29 +108,36 @@ export function runCommand(command: string, args: string[] = []): Promise<void> 
         return
       }
 
-      const fullOutput = Buffer.concat(chunks.map(chunk => chunk.value)).toString("utf8")
-      let parserKey: string | undefined = commandType
-
-      if (commandType === "test") {
-        parserKey = /\b(?:Test Suites|Tests):\s*[^\r\n]+/i.test(fullOutput) ? "jest" : undefined
-      } else if (
-        commandType === "git:push" &&
-        /(non-fast-forward|\[rejected\]|fetch first|tip of your current branch is behind|failed to push some refs)/i.test(fullOutput)
-      ) {
-        parserKey = "git:push:conflict"
+      const original = Buffer.concat(chunks.map(chunk => chunk.value)).toString("utf8")
+      const normalized = services.normalize(original)
+      const parserContext: ParserContext = {
+        command,
+        args,
+        succeeded,
+        cwd: process.cwd()
       }
+      const result = services.parserEngine.parse(
+        commandType,
+        normalized.text,
+        parserContext
+      )
 
-      const parser = parserKey ? parsers[parserKey] : undefined
-      const result = parser?.(fullOutput, { command, args, succeeded })
-
-      if (!result?.matched) {
+      if (!result.matched) {
         chunks.forEach(writeChunk)
         finish()
         return
       }
 
-      console.log("\nOptimized logs:")
-      console.log(result.output)
+      if (normalized.omittedLines) {
+        result.summary.omitted.logs =
+          (result.summary.omitted.logs || 0) + normalized.omittedLines
+      }
+
+      console.log(services.render(result.summary, {
+        maxItems: options.maxItems || DEFAULT_MAX_ITEMS,
+        maxChars: options.maxChars || DEFAULT_MAX_CHARS,
+        cwd: process.cwd()
+      }))
       finish()
     })
   })

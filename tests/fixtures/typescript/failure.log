@@ -1,0 +1,3 @@
+src/api/client.ts(12,5): error TS2322: Type 'string' is not assignable to type 'number'.
+src/api/client.ts(19,18): error TS2304: Cannot find name 'payload'.
+src/config.ts:7:3 - warning TS6133: 'legacyValue' is declared but its value is never read.

@@ -1,0 +1,6 @@
+vite v6.1.0 building for production...
+✓ 42 modules transformed.
+✗ Build failed in 512ms
+error during build:
+src/main.ts (8:4): "missing" is not exported by "src/config.ts"
+RollupError: src/main.ts (8:4): "missing" is not exported

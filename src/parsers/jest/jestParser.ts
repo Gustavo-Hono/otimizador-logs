@@ -1,50 +1,69 @@
-import { bold, cyan, green, red, yellow } from "kleur/colors"
-import { LogParser, parsed, unmatched } from "../types"
+import {
+  countFrom,
+  extractStack,
+  firstMeaningfulLine,
+  isProjectFrame,
+  parseLocation,
+  summary
+} from "../helpers"
+import { diagnostic, LogParser, parsed, unmatched } from "../types"
+
+function failureSections(log: string) {
+  const matches = [...log.matchAll(/^●\s+(.+)$/gm)]
+  return matches.map((match, index) => {
+    const start = (match.index || 0) + match[0].length
+    const end = matches[index + 1]?.index ?? log.search(/^Test Suites:/m)
+    return {
+      name: match[1].trim(),
+      body: log.slice(start, end < 0 ? undefined : end).trim()
+    }
+  })
+}
 
 export const parseJest: LogParser = (log) => {
-  const testsSummary = log.match(/Tests:\s*([^\r\n]+)/i)?.[1]
-  const readCount = (label: string) => {
-    const value = testsSummary?.match(new RegExp(`([\\d,]+)\\s+${label}`, "i"))?.[1]
-    return value ? Number(value.replace(/,/g, "")) : undefined
+  const testsSummary = log.match(/^Tests:\s*([^\r\n]+)/im)?.[1]
+  const suitesSummary = log.match(/^Test Suites:\s*([^\r\n]+)/im)?.[1]
+  if (!testsSummary && !suitesSummary && !/^FAIL\s+/m.test(log)) return unmatched()
+
+  const failed = countFrom(testsSummary, "failed") || 0
+  const passed = countFrom(testsSummary, "passed") || 0
+  const total = countFrom(testsSummary, "total")
+  const suiteFailed = countFrom(suitesSummary, "failed") || 0
+  const suitePassed = countFrom(suitesSummary, "passed") || 0
+  const suiteTotal = countFrom(suitesSummary, "total")
+  const time = log.match(/^Time:\s+([\d.]+\s*m?s)/im)?.[1]?.replace(/\s+/g, "")
+  const result = summary("jest", failed || suiteFailed ? "fail" : "pass", {
+    tests: total === undefined ? `${passed} passed` : `${passed}/${total}`,
+    ...(failed ? { failed } : {}),
+    suites: suiteTotal === undefined ? `${suitePassed} passed` : `${suitePassed}/${suiteTotal}`,
+    ...(suiteFailed ? { failedSuites: suiteFailed } : {}),
+    ...(time ? { time } : {})
+  })
+
+  for (const section of failureSections(log)) {
+    const lines = section.body.split("\n")
+    const stack = extractStack(section.body)
+    const location = stack.find(isProjectFrame)
+      || parseLocation(lines.find(line => /:\d+:\d+/.test(line)) || "")
+    const details = lines
+      .map(line => line.trim())
+      .filter(line => /^(Expected|Received|expected|received|Snapshot|Difference|Error:)/.test(line))
+
+    result.diagnostics.push(diagnostic(
+      firstMeaningfulLine(lines) || section.name,
+      {
+        title: section.name,
+        location,
+        details,
+        stack
+      }
+    ))
   }
 
-  const passed = testsSummary ? readCount("passed") ?? 0 : undefined
-  const failed = testsSummary ? readCount("failed") ?? 0 : undefined
-  const total = testsSummary ? readCount("total") : undefined
-  const timeMatch = log.match(/Time:\s+([\d.]+)\s*m?s/i)
-  const hasFailures = (failed ?? 0) > 0 || (!testsSummary && /\bFAIL\b/.test(log))
-  const failedTestName = log.match(/●\s+(.*)/)?.[1]?.trim() || "Unknown"
-  const errorMessage = log.match(/●.*\n\n\s+([\s\S]*?)(?=\n\s+at)/)?.[1]?.trim()
-  const errorLocation = log.match(/at\s+(.*:\d+:\d+)/)?.[1]
-  if (!testsSummary && !hasFailures) return unmatched()
-
-  const passedText = passed ?? "Unknown"
-  const failedText = failed ?? "Unknown"
-  const totalText = total ?? "Unknown"
-  const executionTime = timeMatch ? `${timeMatch[1]} s` : "Unknown"
-
-  if (hasFailures) {
-    return parsed([
-      bold(red("Test run failed")),
-      "",
-      `${cyan("Tests passed:")} ${green(String(passedText))}`,
-      `${cyan("Tests failed:")} ${red(String(failedText))}`,
-      `${cyan("Total tests:")} ${totalText}`,
-      `${cyan("Execution time:")} ${executionTime}`,
-      "",
-      bold(yellow("Failure details")),
-      `${yellow("Name:")} ${failedTestName}`,
-      `${yellow("Error:")} ${errorMessage || "Generic error or system failure"}`,
-      `${yellow("Location:")} ${errorLocation || "Unknown"}`
-    ].join("\n"))
+  if (result.status === "fail" && !result.diagnostics.length) {
+    const failedFile = log.match(/^FAIL\s+(.+)$/m)?.[1]
+    result.diagnostics.push(diagnostic(failedFile ? `Failed suite: ${failedFile}` : "Test run failed"))
   }
 
-  return parsed([
-    bold(green("All tests passed")),
-    "",
-    `${cyan("Tests passed:")} ${green(String(passedText))}`,
-    `${cyan("Tests failed:")} ${green(String(failedText))}`,
-    `${cyan("Total tests:")} ${totalText}`,
-    `${cyan("Execution time:")} ${executionTime}`
-  ].join("\n"))
+  return parsed(result)
 }
